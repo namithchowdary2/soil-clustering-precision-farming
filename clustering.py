@@ -111,6 +111,10 @@ class SoilClusteringEngine:
         )
         
         feature_importance = np.abs(self.pca.components_).sum(axis=0)
+        
+        if len(feature_importance) != len(self.feature_names):
+            raise ValueError(f"Feature importance length {len(feature_importance)} does not match number of features {len(self.feature_names)}")
+        
         importance_df = pd.DataFrame({
             'Feature': self.feature_names,
             'Importance': feature_importance / feature_importance.sum()
