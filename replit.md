@@ -2,9 +2,13 @@
 
 ## Overview
 
-This is a Streamlit-based web application for precision farming that performs multivariate clustering analysis on soil and environmental data. The application helps farmers and agricultural professionals identify patterns in agricultural datasets through advanced machine learning techniques including K-Means clustering, PCA dimensionalization, and comprehensive data visualization.
+This is a Streamlit-based web application for precision farming that performs multivariate clustering analysis on soil and environmental data. The application helps farmers and agricultural professionals identify patterns in agricultural datasets through advanced machine learning techniques including multiple clustering algorithms (K-Means, DBSCAN, Hierarchical, GMM), PCA dimensionality reduction, and comprehensive data visualization.
 
-The system processes uploaded soil/environmental datasets (CSV or Excel), applies standardization and dimensionality reduction, determines optimal cluster counts using multiple metrics (elbow method, silhouette score, Davies-Bouldin index), and provides interactive visualizations to support data-driven farming decisions.
+The system processes uploaded soil/environmental datasets (CSV or Excel), applies standardization and dimensionality reduction, supports multiple clustering algorithms with comparison capabilities, determines optimal cluster counts using multiple metrics (elbow method, silhouette score, Davies-Bouldin index, Calinski-Harabasz), and provides interactive visualizations to support data-driven farming decisions.
+
+**Deployment Options:**
+1. **Web Application**: Full-featured Streamlit web interface running on Replit
+2. **Google Colab Notebook**: Standalone Jupyter notebook (`Soil_Clustering_Analysis_Colab.ipynb`) for running analysis in Google Colab with all backend code included
 
 ## User Preferences
 
@@ -18,8 +22,10 @@ Preferred communication style: Simple, everyday language.
 - **Key Components**:
   - File upload interface for CSV/Excel datasets
   - Interactive sidebar for data input and configuration
-  - Multi-panel layout for displaying analysis results and visualizations
-  - Session state variables: `clustering_engine`, `data`, `feature_columns`, `clustering_done`
+  - Multi-panel layout with 4 tabs: Data Exploration, Clustering Analysis, Results & Insights, Export
+  - Algorithm selector with parameter controls for each clustering method
+  - Algorithm comparison view for running and comparing multiple approaches
+  - Session state variables: `clustering_engine`, `data`, `feature_columns`, `clustering_done`, `algorithm_results`, `selected_algorithm`
 - **Rationale**: Streamlit chosen for rapid development of data science applications with minimal frontend code, built-in reactivity, and native support for scientific Python libraries
 
 ### Backend Architecture
@@ -27,11 +33,17 @@ Preferred communication style: Simple, everyday language.
 - **Processing Pipeline**:
   1. Data preprocessing with StandardScaler normalization
   2. Dimensionality reduction using PCA (Principal Component Analysis)
-  3. K-Means clustering with configurable cluster counts
-  4. Model evaluation using multiple metrics
-- **Design Pattern**: Stateful engine pattern where the clustering engine maintains fitted models (scaler, PCA, KMeans) for consistent transformations
+  3. Multiple clustering algorithms with configurable parameters
+  4. Model evaluation using comprehensive metrics
+  5. Algorithm comparison and visualization
+- **Design Pattern**: Stateful engine pattern where the clustering engine maintains fitted models (scaler, PCA, clustering models) for consistent transformations
+- **Clustering Algorithms**:
+  - K-Means: Partitioning-based clustering with elbow method
+  - DBSCAN: Density-based clustering (handles noise/outliers)
+  - Hierarchical: Agglomerative clustering with linkage options
+  - GMM: Probabilistic Gaussian Mixture Models with BIC/AIC metrics
 - **Key Libraries**:
-  - scikit-learn: Machine learning algorithms (KMeans, PCA, StandardScaler)
+  - scikit-learn: Machine learning algorithms (KMeans, DBSCAN, AgglomerativeClustering, GaussianMixture, PCA, StandardScaler)
   - pandas: Data manipulation and analysis
   - numpy: Numerical computations
 - **Rationale**: Separation of concerns between UI (app.py), business logic (clustering.py), and presentation (visualization.py) for maintainability and testability
@@ -39,13 +51,20 @@ Preferred communication style: Simple, everyday language.
 ### Data Processing Architecture
 - **Standardization**: StandardScaler ensures all features contribute equally to clustering by normalizing to zero mean and unit variance
 - **Dimensionality Reduction**: PCA with configurable components (default 3) for visualization and noise reduction
-- **Clustering**: K-Means algorithm with elbow method analysis for optimal k selection
+- **Clustering Algorithms**: 
+  - K-Means: Elbow method analysis for optimal k selection
+  - DBSCAN: Eps and min_samples parameters for density-based clustering
+  - Hierarchical: Linkage methods (ward, complete, average, single)
+  - GMM: Covariance types (full, tied, diag, spherical)
 - **Metrics Tracking**: 
-  - Inertia (within-cluster sum of squares)
-  - Silhouette score (cluster separation quality)
-  - Davies-Bouldin index (cluster compactness and separation)
+  - Inertia (within-cluster sum of squares - K-Means)
+  - Silhouette score (cluster separation quality - all algorithms)
+  - Davies-Bouldin index (cluster compactness - all algorithms)
+  - Calinski-Harabasz score (variance ratio - all algorithms)
+  - BIC/AIC (Bayesian/Akaike Information Criterion - GMM only)
   - PCA variance explained ratios
-- **Rationale**: Multiple metrics provide comprehensive evaluation, reducing risk of suboptimal clustering decisions based on single metric
+- **Algorithm Comparison**: Side-by-side comparison table with all metrics for informed algorithm selection
+- **Rationale**: Multiple algorithms and metrics provide comprehensive evaluation, allowing users to choose the best approach for their specific soil data characteristics
 
 ### Visualization Architecture
 - **Primary Library**: Plotly for interactive web-based visualizations
@@ -72,9 +91,12 @@ Preferred communication style: Simple, everyday language.
 - **numpy**: Array operations and numerical computations
 - **scikit-learn**: Machine learning algorithms
   - KMeans clustering
+  - DBSCAN (density-based clustering)
+  - AgglomerativeClustering (hierarchical)
+  - GaussianMixture (probabilistic clustering)
   - PCA dimensionality reduction
   - StandardScaler normalization
-  - Evaluation metrics (silhouette_score, davies_bouldin_score)
+  - Evaluation metrics (silhouette_score, davies_bouldin_score, calinski_harabasz_score)
 - **plotly**: Interactive visualization library
   - plotly.express: High-level plotting interface
   - plotly.graph_objects: Low-level graph construction
