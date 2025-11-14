@@ -37,6 +37,10 @@ if 'feature_columns' not in st.session_state:
     st.session_state.feature_columns = None
 if 'clustering_done' not in st.session_state:
     st.session_state.clustering_done = False
+if 'algorithm_results' not in st.session_state:
+    st.session_state.algorithm_results = {}
+if 'selected_algorithm' not in st.session_state:
+    st.session_state.selected_algorithm = 'K-Means'
 
 
 with st.sidebar:
@@ -197,24 +201,193 @@ if st.session_state.data is not None:
                     st.success(f"💡 Suggested optimal clusters based on Silhouette Score: **{suggested_k}**")
                     
                     st.markdown("---")
-                    st.subheader("Step 3: Perform Clustering")
+                    st.subheader("Step 3: Select Clustering Algorithm & Run")
                     
-                    n_clusters = st.number_input(
-                        "Number of clusters (k)",
-                        min_value=2,
-                        max_value=max_clusters,
-                        value=suggested_k,
-                        help="Select the number of clusters for K-Means algorithm"
+                    algorithm = st.selectbox(
+                        "Choose Clustering Algorithm",
+                        options=["K-Means", "DBSCAN", "Hierarchical", "GMM", "Compare All"],
+                        help="Select the clustering algorithm to use"
                     )
                     
-                    if st.button("🎯 Run K-Means Clustering", type="primary"):
-                        with st.spinner(f"Performing clustering with {n_clusters} clusters..."):
-                            cluster_result = engine.perform_clustering(n_clusters)
-                            st.session_state.cluster_result = cluster_result
-                            st.session_state.n_clusters = n_clusters
-                            st.session_state.clustering_done = True
-                            st.success(f"✅ Successfully created {n_clusters} clusters!")
-                            st.balloons()
+                    st.markdown("### Algorithm Parameters")
+                    
+                    if algorithm == "K-Means":
+                        n_clusters = st.number_input(
+                            "Number of clusters (k)",
+                            min_value=2,
+                            max_value=max_clusters,
+                            value=suggested_k,
+                            help="Number of clusters for K-Means"
+                        )
+                        
+                        if st.button("🎯 Run K-Means Clustering", type="primary"):
+                            with st.spinner(f"Running K-Means with {n_clusters} clusters..."):
+                                cluster_result = engine.perform_clustering(n_clusters)
+                                st.session_state.algorithm_results['K-Means'] = cluster_result
+                                st.session_state.cluster_result = cluster_result
+                                st.session_state.n_clusters = n_clusters
+                                st.session_state.clustering_done = True
+                                st.success(f"✅ K-Means completed with {n_clusters} clusters!")
+                                st.balloons()
+                    
+                    elif algorithm == "DBSCAN":
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            eps = st.slider(
+                                "Epsilon (eps)",
+                                min_value=0.1,
+                                max_value=5.0,
+                                value=0.5,
+                                step=0.1,
+                                help="Maximum distance between two samples to be considered neighbors"
+                            )
+                        with col2:
+                            min_samples = st.number_input(
+                                "Min Samples",
+                                min_value=2,
+                                max_value=20,
+                                value=5,
+                                help="Minimum number of samples in a neighborhood for a core point"
+                            )
+                        
+                        if st.button("🎯 Run DBSCAN Clustering", type="primary"):
+                            with st.spinner(f"Running DBSCAN (eps={eps}, min_samples={min_samples})..."):
+                                cluster_result = engine.perform_dbscan(eps=eps, min_samples=min_samples)
+                                st.session_state.algorithm_results['DBSCAN'] = cluster_result
+                                st.session_state.cluster_result = cluster_result
+                                st.session_state.n_clusters = cluster_result['n_clusters']
+                                st.session_state.clustering_done = True
+                                st.success(f"✅ DBSCAN completed! Found {cluster_result['n_clusters']} clusters and {cluster_result['n_noise']} noise points")
+                                if cluster_result['n_clusters'] > 0:
+                                    st.balloons()
+                    
+                    elif algorithm == "Hierarchical":
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            n_clusters = st.number_input(
+                                "Number of clusters",
+                                min_value=2,
+                                max_value=max_clusters,
+                                value=suggested_k,
+                                help="Number of clusters for Hierarchical clustering"
+                            )
+                        with col2:
+                            linkage = st.selectbox(
+                                "Linkage Method",
+                                options=["ward", "complete", "average", "single"],
+                                help="Linkage criterion to use"
+                            )
+                        
+                        metric = st.selectbox(
+                            "Distance Metric",
+                            options=["euclidean", "manhattan", "cosine"],
+                            help="Metric for distance computation (ward requires euclidean)"
+                        )
+                        
+                        if st.button("🎯 Run Hierarchical Clustering", type="primary"):
+                            with st.spinner(f"Running Hierarchical clustering with {n_clusters} clusters..."):
+                                cluster_result = engine.perform_hierarchical(
+                                    n_clusters=n_clusters,
+                                    linkage=linkage,
+                                    metric=metric if linkage != 'ward' else 'euclidean'
+                                )
+                                st.session_state.algorithm_results['Hierarchical'] = cluster_result
+                                st.session_state.cluster_result = cluster_result
+                                st.session_state.n_clusters = n_clusters
+                                st.session_state.clustering_done = True
+                                st.success(f"✅ Hierarchical clustering completed with {n_clusters} clusters!")
+                                st.balloons()
+                    
+                    elif algorithm == "GMM":
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            n_components = st.number_input(
+                                "Number of components",
+                                min_value=2,
+                                max_value=max_clusters,
+                                value=suggested_k,
+                                help="Number of mixture components for GMM"
+                            )
+                        with col2:
+                            covariance_type = st.selectbox(
+                                "Covariance Type",
+                                options=["full", "tied", "diag", "spherical"],
+                                help="Type of covariance parameters"
+                            )
+                        
+                        if st.button("🎯 Run GMM Clustering", type="primary"):
+                            with st.spinner(f"Running GMM with {n_components} components..."):
+                                cluster_result = engine.perform_gmm(
+                                    n_components=n_components,
+                                    covariance_type=covariance_type
+                                )
+                                st.session_state.algorithm_results['GMM'] = cluster_result
+                                st.session_state.cluster_result = cluster_result
+                                st.session_state.n_clusters = n_components
+                                st.session_state.clustering_done = True
+                                st.success(f"✅ GMM completed with {n_components} components!")
+                                st.info(f"BIC: {cluster_result['bic']:.2f} | AIC: {cluster_result['aic']:.2f}")
+                                st.balloons()
+                    
+                    elif algorithm == "Compare All":
+                        n_clusters_compare = st.number_input(
+                            "Number of clusters for comparison",
+                            min_value=2,
+                            max_value=max_clusters,
+                            value=suggested_k,
+                            help="Number of clusters to use for all algorithms (except DBSCAN)"
+                        )
+                        
+                        st.info("DBSCAN will use eps=0.5 and min_samples=5 by default")
+                        
+                        if st.button("🎯 Run All Algorithms & Compare", type="primary"):
+                            with st.spinner("Running all clustering algorithms..."):
+                                results = {}
+                                
+                                kmeans_result = engine.perform_clustering(n_clusters_compare)
+                                results['K-Means'] = kmeans_result
+                                
+                                dbscan_result = engine.perform_dbscan(eps=0.5, min_samples=5)
+                                results['DBSCAN'] = dbscan_result
+                                
+                                hierarchical_result = engine.perform_hierarchical(
+                                    n_clusters=n_clusters_compare,
+                                    linkage='ward'
+                                )
+                                results['Hierarchical'] = hierarchical_result
+                                
+                                gmm_result = engine.perform_gmm(
+                                    n_components=n_clusters_compare,
+                                    covariance_type='full'
+                                )
+                                results['GMM'] = gmm_result
+                                
+                                st.session_state.algorithm_results = results
+                                st.session_state.cluster_result = kmeans_result
+                                st.session_state.n_clusters = n_clusters_compare
+                                st.session_state.clustering_done = True
+                                
+                                st.success("✅ All algorithms completed!")
+                                
+                                st.markdown("### 📊 Algorithm Comparison")
+                                comparison_df = engine.compare_algorithms(results)
+                                st.dataframe(comparison_df, use_container_width=True)
+                                
+                                st.balloons()
+                    
+                    if len(st.session_state.algorithm_results) > 1:
+                        st.markdown("---")
+                        st.subheader("📊 Compare Algorithms")
+                        comparison_df = engine.compare_algorithms(st.session_state.algorithm_results)
+                        st.dataframe(comparison_df, use_container_width=True)
+                        
+                        st.info("""
+                        **Interpretation Guide:**
+                        - **Silhouette Score**: Higher is better (range: -1 to 1). Values > 0.5 indicate good clustering.
+                        - **Davies-Bouldin Index**: Lower is better. Values closer to 0 indicate better separation.
+                        - **Calinski-Harabasz Score**: Higher is better. Measures ratio of between-cluster to within-cluster variance.
+                        - **BIC/AIC** (GMM only): Lower is better. Used for model selection.
+                        """)
         else:
             st.warning("⚠️ Please select features in the 'Data Exploration' tab first")
     

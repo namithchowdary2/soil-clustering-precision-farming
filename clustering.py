@@ -1,9 +1,10 @@
 import numpy as np
 import pandas as pd
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
+from sklearn.mixture import GaussianMixture
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
-from sklearn.metrics import silhouette_score, davies_bouldin_score
+from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
 
 
 class SoilClusteringEngine:
@@ -124,3 +125,127 @@ class SoilClusteringEngine:
             'components': components_df,
             'importance': importance_df
         }
+    
+    def perform_dbscan(self, eps=0.5, min_samples=5):
+        if self.scaled_data is None:
+            raise ValueError("Data must be preprocessed first")
+        
+        dbscan = DBSCAN(eps=eps, min_samples=min_samples)
+        labels = dbscan.fit_predict(self.scaled_data)
+        
+        n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+        n_noise = list(labels).count(-1)
+        
+        metrics = {
+            'labels': labels,
+            'n_clusters': n_clusters,
+            'n_noise': n_noise,
+            'algorithm': 'DBSCAN'
+        }
+        
+        if n_clusters > 1:
+            valid_mask = labels != -1
+            if valid_mask.sum() > 0:
+                metrics['silhouette_score'] = silhouette_score(
+                    self.scaled_data[valid_mask], 
+                    labels[valid_mask]
+                )
+                metrics['davies_bouldin_score'] = davies_bouldin_score(
+                    self.scaled_data[valid_mask], 
+                    labels[valid_mask]
+                )
+                metrics['calinski_harabasz_score'] = calinski_harabasz_score(
+                    self.scaled_data[valid_mask], 
+                    labels[valid_mask]
+                )
+            else:
+                metrics['silhouette_score'] = -1
+                metrics['davies_bouldin_score'] = -1
+                metrics['calinski_harabasz_score'] = -1
+        else:
+            metrics['silhouette_score'] = -1
+            metrics['davies_bouldin_score'] = -1
+            metrics['calinski_harabasz_score'] = -1
+        
+        self.cluster_labels = labels
+        return metrics
+    
+    def perform_hierarchical(self, n_clusters, linkage='ward', metric='euclidean'):
+        if self.scaled_data is None:
+            raise ValueError("Data must be preprocessed first")
+        
+        if linkage == 'ward':
+            metric = 'euclidean'
+        
+        hierarchical = AgglomerativeClustering(
+            n_clusters=n_clusters,
+            linkage=linkage,
+            metric=metric
+        )
+        labels = hierarchical.fit_predict(self.scaled_data)
+        
+        silhouette = silhouette_score(self.scaled_data, labels)
+        davies_bouldin = davies_bouldin_score(self.scaled_data, labels)
+        calinski = calinski_harabasz_score(self.scaled_data, labels)
+        
+        self.cluster_labels = labels
+        
+        return {
+            'labels': labels,
+            'n_clusters': n_clusters,
+            'silhouette_score': silhouette,
+            'davies_bouldin_score': davies_bouldin,
+            'calinski_harabasz_score': calinski,
+            'algorithm': 'Hierarchical'
+        }
+    
+    def perform_gmm(self, n_components, covariance_type='full', random_state=42):
+        if self.scaled_data is None:
+            raise ValueError("Data must be preprocessed first")
+        
+        gmm = GaussianMixture(
+            n_components=n_components,
+            covariance_type=covariance_type,
+            random_state=random_state
+        )
+        labels = gmm.fit_predict(self.scaled_data)
+        
+        silhouette = silhouette_score(self.scaled_data, labels)
+        davies_bouldin = davies_bouldin_score(self.scaled_data, labels)
+        calinski = calinski_harabasz_score(self.scaled_data, labels)
+        
+        self.cluster_labels = labels
+        
+        return {
+            'labels': labels,
+            'n_clusters': n_components,
+            'silhouette_score': silhouette,
+            'davies_bouldin_score': davies_bouldin,
+            'calinski_harabasz_score': calinski,
+            'bic': gmm.bic(self.scaled_data),
+            'aic': gmm.aic(self.scaled_data),
+            'algorithm': 'GMM'
+        }
+    
+    def compare_algorithms(self, algorithm_results):
+        comparison_data = []
+        
+        for algo_name, result in algorithm_results.items():
+            row = {
+                'Algorithm': algo_name,
+                'N_Clusters': result.get('n_clusters', 'N/A'),
+                'Silhouette': result.get('silhouette_score', 'N/A'),
+                'Davies-Bouldin': result.get('davies_bouldin_score', 'N/A'),
+                'Calinski-Harabasz': result.get('calinski_harabasz_score', 'N/A')
+            }
+            
+            if algo_name == 'DBSCAN':
+                row['Noise Points'] = result.get('n_noise', 0)
+            
+            if algo_name == 'GMM':
+                row['BIC'] = result.get('bic', 'N/A')
+                row['AIC'] = result.get('aic', 'N/A')
+            
+            comparison_data.append(row)
+        
+        return pd.DataFrame(comparison_data)
