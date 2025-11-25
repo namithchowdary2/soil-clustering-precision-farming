@@ -249,3 +249,65 @@ class SoilClusteringEngine:
             comparison_data.append(row)
         
         return pd.DataFrame(comparison_data)
+    
+    def predict_crop(self, nitrogen, phosphorus, potassium, rainfall, ph):
+        """
+        Predict suitable crops based on soil parameters.
+        Returns ranked list of suitable crops with scores.
+        """
+        crops = {
+            'Wheat': {'ph': (6.0, 7.5), 'n': (40, 120), 'p': (15, 45), 'k': (40, 120), 'rainfall': (400, 900)},
+            'Rice': {'ph': (5.5, 7.0), 'n': (60, 120), 'p': (20, 60), 'k': (40, 80), 'rainfall': (1000, 2500)},
+            'Corn': {'ph': (6.0, 7.5), 'n': (80, 150), 'p': (25, 75), 'k': (40, 100), 'rainfall': (500, 800)},
+            'Potato': {'ph': (5.5, 7.0), 'n': (100, 150), 'p': (40, 80), 'k': (150, 250), 'rainfall': (450, 675)},
+            'Cotton': {'ph': (6.0, 7.5), 'n': (80, 120), 'p': (30, 60), 'k': (40, 60), 'rainfall': (600, 1000)},
+            'Sugarcane': {'ph': (6.0, 8.0), 'n': (100, 180), 'p': (40, 80), 'k': (40, 120), 'rainfall': (1200, 2250)},
+            'Soybean': {'ph': (6.0, 7.5), 'n': (0, 40), 'p': (20, 40), 'k': (40, 80), 'rainfall': (450, 700)},
+            'Pulses': {'ph': (6.0, 7.5), 'n': (20, 60), 'p': (40, 80), 'k': (40, 80), 'rainfall': (400, 800)},
+        }
+        
+        scores = {}
+        for crop, ranges in crops.items():
+            score = 0
+            max_score = 5
+            
+            # pH score
+            ph_min, ph_max = ranges['ph']
+            if ph_min <= ph <= ph_max:
+                score += 1
+            else:
+                score += max(0, 1 - abs(ph - (ph_min + ph_max)/2) / ((ph_max - ph_min)/2) * 0.5)
+            
+            # Nitrogen score
+            n_min, n_max = ranges['n']
+            if n_min <= nitrogen <= n_max:
+                score += 1
+            else:
+                score += max(0, 1 - abs(nitrogen - (n_min + n_max)/2) / ((n_max - n_min)/2) * 0.5)
+            
+            # Phosphorus score
+            p_min, p_max = ranges['p']
+            if p_min <= phosphorus <= p_max:
+                score += 1
+            else:
+                score += max(0, 1 - abs(phosphorus - (p_min + p_max)/2) / ((p_max - p_min)/2) * 0.5)
+            
+            # Potassium score
+            k_min, k_max = ranges['k']
+            if k_min <= potassium <= k_max:
+                score += 1
+            else:
+                score += max(0, 1 - abs(potassium - (k_min + k_max)/2) / ((k_max - k_min)/2) * 0.5)
+            
+            # Rainfall score
+            r_min, r_max = ranges['rainfall']
+            if r_min <= rainfall <= r_max:
+                score += 1
+            else:
+                score += max(0, 1 - abs(rainfall - (r_min + r_max)/2) / ((r_max - r_min)/2) * 0.5)
+            
+            scores[crop] = round((score / max_score) * 100, 1)
+        
+        # Sort by score
+        sorted_crops = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        return sorted_crops

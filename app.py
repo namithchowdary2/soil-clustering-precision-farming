@@ -82,7 +82,7 @@ with st.sidebar:
 if st.session_state.data is not None:
     df = st.session_state.data
     
-    tab1, tab2, tab3, tab4 = st.tabs(["📊 Data Exploration", "🔍 Clustering Analysis", "📈 Results & Insights", "💾 Export"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Data Exploration", "🔍 Clustering Analysis", "📈 Results & Insights", "💾 Export", "🌱 Crop Prediction"])
     
     with tab1:
         st.header("Data Overview")
@@ -228,6 +228,16 @@ if st.session_state.data is not None:
                                 st.session_state.n_clusters = n_clusters
                                 st.session_state.clustering_done = True
                                 st.success(f"✅ K-Means completed with {n_clusters} clusters!")
+                                
+                                with st.expander("📊 View Results", expanded=True):
+                                    col1, col2, col3 = st.columns(3)
+                                    with col1:
+                                        st.metric("Number of Clusters", n_clusters)
+                                    with col2:
+                                        st.metric("Silhouette Score", f"{cluster_result.get('silhouette_score', 0):.3f}")
+                                    with col3:
+                                        st.metric("Davies-Bouldin Index", f"{cluster_result.get('davies_bouldin_score', 0):.3f}")
+                                    st.info("✅ Switch to 'Results & Insights' tab to see detailed visualizations and cluster profiling!")
                                 st.balloons()
                     
                     elif algorithm == "DBSCAN":
@@ -258,6 +268,16 @@ if st.session_state.data is not None:
                                 st.session_state.n_clusters = cluster_result['n_clusters']
                                 st.session_state.clustering_done = True
                                 st.success(f"✅ DBSCAN completed! Found {cluster_result['n_clusters']} clusters and {cluster_result['n_noise']} noise points")
+                                
+                                with st.expander("📊 View Results", expanded=True):
+                                    col1, col2, col3 = st.columns(3)
+                                    with col1:
+                                        st.metric("Number of Clusters", cluster_result['n_clusters'])
+                                    with col2:
+                                        st.metric("Silhouette Score", f"{cluster_result.get('silhouette_score', -1):.3f}")
+                                    with col3:
+                                        st.metric("Noise Points", cluster_result['n_noise'])
+                                    st.info("✅ Switch to 'Results & Insights' tab to see detailed visualizations!")
                                 if cluster_result['n_clusters'] > 0:
                                     st.balloons()
                     
@@ -296,6 +316,16 @@ if st.session_state.data is not None:
                                 st.session_state.n_clusters = n_clusters
                                 st.session_state.clustering_done = True
                                 st.success(f"✅ Hierarchical clustering completed with {n_clusters} clusters!")
+                                
+                                with st.expander("📊 View Results", expanded=True):
+                                    col1, col2, col3 = st.columns(3)
+                                    with col1:
+                                        st.metric("Number of Clusters", n_clusters)
+                                    with col2:
+                                        st.metric("Silhouette Score", f"{cluster_result.get('silhouette_score', 0):.3f}")
+                                    with col3:
+                                        st.metric("Davies-Bouldin Index", f"{cluster_result.get('davies_bouldin_score', 0):.3f}")
+                                    st.info("✅ Switch to 'Results & Insights' tab to see detailed visualizations!")
                                 st.balloons()
                     
                     elif algorithm == "GMM":
@@ -326,7 +356,17 @@ if st.session_state.data is not None:
                                 st.session_state.n_clusters = n_components
                                 st.session_state.clustering_done = True
                                 st.success(f"✅ GMM completed with {n_components} components!")
-                                st.info(f"BIC: {cluster_result['bic']:.2f} | AIC: {cluster_result['aic']:.2f}")
+                                
+                                with st.expander("📊 View Results", expanded=True):
+                                    col1, col2, col3 = st.columns(3)
+                                    with col1:
+                                        st.metric("Number of Components", n_components)
+                                    with col2:
+                                        st.metric("Silhouette Score", f"{cluster_result.get('silhouette_score', 0):.3f}")
+                                    with col3:
+                                        st.metric("BIC Score", f"{cluster_result['bic']:.2f}")
+                                    st.metric("AIC Score", f"{cluster_result['aic']:.2f}")
+                                    st.info("✅ Switch to 'Results & Insights' tab to see detailed visualizations!")
                                 st.balloons()
                     
                     elif algorithm == "Compare All":
@@ -540,6 +580,141 @@ if st.session_state.data is not None:
             
         else:
             st.info("👈 Please complete the clustering analysis first to enable exports")
+    
+    with tab5:
+        st.header("🌱 Crop Prediction Engine")
+        st.markdown("Enter your soil parameters to get crop recommendations for your farm.")
+        
+        st.subheader("Enter Soil Parameters")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            ph = st.slider(
+                "Soil pH",
+                min_value=4.0,
+                max_value=9.0,
+                value=6.5,
+                step=0.1,
+                help="Soil acidity/alkalinity (4-9 range)"
+            )
+            
+            nitrogen = st.number_input(
+                "Nitrogen (N) in ppm",
+                min_value=0,
+                max_value=300,
+                value=50,
+                step=5,
+                help="Parts per million"
+            )
+            
+            phosphorus = st.number_input(
+                "Phosphorus (P) in ppm",
+                min_value=0,
+                max_value=200,
+                value=20,
+                step=2,
+                help="Parts per million"
+            )
+        
+        with col2:
+            potassium = st.number_input(
+                "Potassium (K) in ppm",
+                min_value=0,
+                max_value=500,
+                value=100,
+                step=10,
+                help="Parts per million"
+            )
+            
+            rainfall = st.number_input(
+                "Annual Rainfall (mm)",
+                min_value=0,
+                max_value=5000,
+                value=700,
+                step=50,
+                help="Annual rainfall in millimeters"
+            )
+        
+        if st.button("🌾 Get Crop Recommendations", type="primary"):
+            engine = st.session_state.clustering_engine
+            crop_recommendations = engine.predict_crop(nitrogen, phosphorus, potassium, rainfall, ph)
+            
+            st.markdown("---")
+            st.subheader("📊 Recommended Crops (Ranked by Suitability)")
+            
+            # Display as a nice table
+            rec_data = []
+            for rank, (crop, score) in enumerate(crop_recommendations, 1):
+                rec_data.append({
+                    'Rank': rank,
+                    'Crop': crop,
+                    'Suitability Score': f"{score}%",
+                    'Match': '🟢 Excellent' if score >= 80 else '🟡 Good' if score >= 60 else '🟠 Fair' if score >= 40 else '🔴 Poor'
+                })
+            
+            rec_df = pd.DataFrame(rec_data)
+            st.dataframe(rec_df, use_container_width=True, hide_index=True)
+            
+            # Display detailed recommendations for top 3 crops
+            st.markdown("---")
+            st.subheader("🎯 Top Crop Recommendations")
+            
+            for i, (crop, score) in enumerate(crop_recommendations[:3]):
+                with st.expander(f"#{i+1} {crop} (Suitability: {score}%)", expanded=(i==0)):
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.write(f"**Overall Score:** {score}%")
+                        if score >= 80:
+                            st.success("✅ Highly Suitable - Excellent match for your soil!")
+                        elif score >= 60:
+                            st.info("✓ Suitable - Good match with minor adjustments")
+                        elif score >= 40:
+                            st.warning("⚠ Moderately Suitable - May require soil amendments")
+                        else:
+                            st.error("✗ Not Recommended - Soil parameters not ideal")
+                    
+                    with col2:
+                        st.write("**Your Parameters:**")
+                        st.write(f"- pH: {ph}")
+                        st.write(f"- N: {nitrogen} ppm")
+                        st.write(f"- P: {phosphorus} ppm")
+                        st.write(f"- K: {potassium} ppm")
+                        st.write(f"- Rainfall: {rainfall} mm")
+            
+            # Add fertilizer recommendations
+            st.markdown("---")
+            st.subheader("💡 Soil Amendment Suggestions")
+            
+            suggestions = []
+            
+            if ph < 6.0:
+                suggestions.append("🔹 **Acidic Soil**: Consider lime application to raise pH")
+            elif ph > 7.5:
+                suggestions.append("🔹 **Alkaline Soil**: Consider sulfur or organic matter to lower pH")
+            
+            if nitrogen < 40:
+                suggestions.append("🔹 **Low Nitrogen**: Add nitrogen-rich fertilizers (urea, ammonium nitrate)")
+            elif nitrogen > 150:
+                suggestions.append("🔹 **High Nitrogen**: Reduce fertilizer application; risk of nutrient burn")
+            
+            if phosphorus < 15:
+                suggestions.append("🔹 **Low Phosphorus**: Add phosphate fertilizers (DAP, SSP)")
+            
+            if potassium < 100:
+                suggestions.append("🔹 **Low Potassium**: Add potassium-rich fertilizers (MOP, SOP)")
+            
+            if rainfall < 500:
+                suggestions.append("🔹 **Low Rainfall**: Plan for irrigation; choose drought-tolerant crops")
+            elif rainfall > 2000:
+                suggestions.append("🔹 **High Rainfall**: Ensure good drainage; watch for waterlogging")
+            
+            if suggestions:
+                for suggestion in suggestions:
+                    st.write(suggestion)
+            else:
+                st.success("✅ Your soil parameters are well-balanced! Minimal amendments needed.")
 
 else:
     st.info("👈 Please upload your soil and environmental data using the sidebar to begin analysis")
